@@ -1,9 +1,11 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
 
 class Conversation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations')
     title = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -17,6 +19,7 @@ class Conversation(models.Model):
 
 
 class Message(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ROLE_CHOICES = [
         ('user', 'User'),
         ('assistant', 'Assistant'),
