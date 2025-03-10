@@ -1,0 +1,15 @@
+# Database
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django
+*.log
+local_settings.py
+media/
+
+# Migrations (optional, typically better to include these in version control)
+# */migrations/*
