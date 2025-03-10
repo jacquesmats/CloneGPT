@@ -11,6 +11,14 @@ class Conversation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def generate_title(self, content):
+        """Generate a title based on the first message content."""
+        if content and len(content) > 0:
+            # Truncate to first 30 chars or first sentence
+            title = content.split('.')[0][:30]
+            return f"{title}..."
+        return "New conversation"
+
     def __str__(self):
         return f"{self.title or 'Untitled'} - {self.user.username}"
 

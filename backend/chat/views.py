@@ -31,11 +31,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_message(self, request, pk=None):
         conversation = self.get_object()
-        
+
         serializer = MessageSerializer(data=request.data)
         if serializer.is_valid():
             # Save the user message
             user_message = serializer.save(conversation=conversation)
+
+            if conversation.title is None or conversation.title == "":
+                conversation.title = conversation.generate_title(user_message.content)
+                conversation.save()
             
             # Get conversation history for context
             conversation_history = Message.objects.filter(
