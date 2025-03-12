@@ -233,7 +233,7 @@ const Chat = () => {
     
     try {
       // First get the complete response
-      const response = await apiService.addMessage(currentConversation.id, input, settings.model);
+      const response = await apiService.addMessage(currentConversation.id, input, settings.model, settings.temperature);
       const assistantMessage = response.assistant_message || { role: "assistant", content: "No response received" };
       
       // Then simulate streaming by adding the message with empty content

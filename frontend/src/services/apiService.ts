@@ -61,11 +61,12 @@ const apiService = {
   },
 
   // Messages
-  addMessage: async (conversationId: string, message: string, deployment: string) => {
+  addMessage: async (conversationId: string, message: string, model: string, temperature: number) => {
     const response = await axios.post(`${API_CONVERSATIONS_URL}${conversationId}/add_message/`, {
       role: "user",
       content: message,
-      deployment: deployment
+      model: model,
+      temperature: temperature
     });
     return response.data;
   }
