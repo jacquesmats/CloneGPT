@@ -10,6 +10,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
   Drawer,
   AppBar,
   Toolbar,
@@ -50,7 +51,7 @@ interface Message {
 
 interface Conversation {
   id: string;
-  name: string;
+  title: string;
   model: string;
   temperature: number;
   context_length: number;
@@ -100,7 +101,7 @@ const apiService = {
 
   createConversation: async (settings: ChatSettings) => {
     const response = await axios.post(API_CONVERSATIONS_URL, {
-      name: "New Conversation",
+      title: "New Conversation",
       model: settings.model,
       temperature: settings.temperature,
       context_length: settings.contextLength
@@ -160,6 +161,14 @@ const Chat = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const drawerWidth = 280;
 
+  // Add these new state variables near the other state declarations
+  const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
+  const [editConversationName, setEditConversationName] = useState("");
+
+  // Update state declarations to include streaming state
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const [isTitleStreaming, setIsTitleStreaming] = useState<boolean>(false);
+
   // Check authentication on mount
   useEffect(() => {
     setMounted(true);
@@ -201,9 +210,9 @@ const Chat = () => {
       setCurrentConversation(conversation);
       setMessages(conversation.messages || []);
       setSettings({
-        model: conversation.model,
-        temperature: conversation.temperature,
-        contextLength: conversation.context_length
+        model: conversation.model || 'gpt-4o-mini',
+        temperature: conversation.temperature || 0.7,
+        contextLength: conversation.context_length || 4000
       });
       setMobileDrawerOpen(false); // Close mobile drawer after selection
     } catch (error) {
@@ -215,7 +224,7 @@ const Chat = () => {
   const createNewConversation = async () => {
     try {
       const newConversation = await apiService.createConversation(settings);
-      setConversations([...conversations, newConversation]);
+      setConversations([newConversation, ...conversations]);
       setCurrentConversation(newConversation);
       setMessages([]);
       setMobileDrawerOpen(false); // Close mobile drawer after creation
@@ -247,9 +256,9 @@ const Chat = () => {
   // Update conversation name
   const updateConversationName = async (id: string, newName: string) => {
     try {
-      const updatedConversation = await apiService.updateConversation(id, { name: newName });
+      const updatedConversation = await apiService.updateConversation(id, { title: newName });
       setConversations(
-        conversations.map(c => c.id === id ? { ...c, name: newName } : c)
+        conversations.map(c => c.id === id ? { ...c, title: newName } : c)
       );
       if (currentConversation?.id === id) {
         setCurrentConversation(updatedConversation);
@@ -279,7 +288,7 @@ const Chat = () => {
     }
   };
 
-  // Send a message
+  // Simulated streaming version of sendMessage
   const sendMessage = async () => {
     if (!input.trim() || !currentConversation) return;
     
@@ -293,13 +302,40 @@ const Chat = () => {
     setAbortController(controller);
     
     try {
+      // First get the complete response
       const response = await apiService.addMessage(currentConversation.id, input, settings.model);
       const assistantMessage = response.assistant_message || { role: "assistant", content: "No response received" };
-      setMessages(prev => [...prev, assistantMessage]);
       
-      // If this was the first message in a new conversation, refresh conversations to get updated title
+      // Then simulate streaming by adding the message with empty content
+      setMessages(prev => [...prev, { ...assistantMessage, content: "" }]);
+      setIsStreaming(true);
+      
+      // Simulate streaming by revealing one character at a time
+      const fullContent = assistantMessage.content;
+      let displayedContent = "";
+      const charUpdateInterval = 10; // ms between character additions
+      
+      for (let i = 0; i < fullContent.length; i++) {
+        if (controller.signal.aborted) break;
+        
+        await new Promise(resolve => setTimeout(resolve, charUpdateInterval));
+        displayedContent += fullContent[i];
+        
+        // Update the last message with the current streaming content
+        setMessages(prev => {
+          const updatedMessages = [...prev];
+          updatedMessages[updatedMessages.length - 1] = {
+            ...assistantMessage,
+            content: displayedContent
+          };
+          return updatedMessages;
+        });
+      }
+      
+      // If this was the first message, update the title with streaming effect
       if (messages.length === 0) {
-        loadConversations();
+        const newTitle = input.length > 30 ? input.substring(0, 30) + "..." : input;
+        streamConversationRename(currentConversation.id, newTitle);
       }
     } catch (error) {
       if (axios.isCancel(error)) {
@@ -310,7 +346,43 @@ const Chat = () => {
       }
     } finally {
       setLoading(false);
+      setIsStreaming(false);
       setAbortController(null);
+    }
+  };
+
+  // Add a new function for streaming conversation rename
+  const streamConversationRename = async (id: string, newName: string) => {
+    setIsTitleStreaming(true);
+    
+    // Simulate streaming for the title
+    let displayedTitle = "";
+    const titleUpdateInterval = 50; // ms between character additions
+    
+    for (let i = 0; i < newName.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, titleUpdateInterval));
+      displayedTitle += newName[i];
+      
+      // Update the conversation title in real-time
+      setConversations(
+        conversations.map(c => c.id === id ? { ...c, title: displayedTitle } : c)
+      );
+      
+      if (currentConversation?.id === id) {
+        setCurrentConversation(prev => prev ? { ...prev, title: displayedTitle } : null);
+      }
+    }
+    
+    // After streaming is complete, update the actual title in the backend
+    try {
+      const updatedConversation = await apiService.updateConversation(id, { title: newName });
+      if (currentConversation?.id === id) {
+        setCurrentConversation(updatedConversation);
+      }
+    } catch (error) {
+      console.error("Error updating conversation name:", error);
+    } finally {
+      setIsTitleStreaming(false);
     }
   };
 
@@ -530,7 +602,7 @@ const Chat = () => {
             <span>☰</span>
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {currentConversation?.name || "ChatGPT Clone"}
+            {currentConversation?.title || "ChatGPT Clone"}
           </Typography>
           <IconButton color="inherit" onClick={() => setSettingsOpen(true)}>
             <SettingsIcon />
@@ -585,27 +657,92 @@ const Chat = () => {
             {conversations.map(conversation => (
               <ListItem 
                 key={conversation.id}
-                button 
-                selected={currentConversation?.id === conversation.id}
-                onClick={() => selectConversation(conversation.id)}
-                sx={{ 
-                  borderRadius: 1,
-                  mb: 1,
-                  bgcolor: currentConversation?.id === conversation.id ? '#333' : 'transparent',
-                  '&:hover': { bgcolor: '#333' },
-                }}
+                disablePadding
                 secondaryAction={
-                  <IconButton edge="end" onClick={() => deleteConversation(conversation.id)} sx={{ color: 'white' }}>
-                    <DeleteIcon />
-                  </IconButton>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {editingConversationId === conversation.id ? (
+                      <IconButton 
+                        edge="end" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateConversationName(conversation.id, editConversationName);
+                          setEditingConversationId(null);
+                        }} 
+                        sx={{ color: 'white', p: 0.5 }}
+                        size="small"
+                      >
+                        <SendIcon fontSize="small" />
+                      </IconButton>
+                    ) : (
+                      <>
+                        <IconButton 
+                          edge="end" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingConversationId(conversation.id);
+                            setEditConversationName(conversation.title);
+                          }} 
+                          sx={{ color: 'white', p: 0.5, mr: 0.5 }}
+                          size="small"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton 
+                          edge="end" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConversation(conversation.id);
+                          }} 
+                          sx={{ color: 'white', p: 0.5 }}
+                          size="small"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
                 }
               >
-                <ListItemText primary={conversation.title} 
-                  primaryTypographyProps={{ 
-                    noWrap: true,
-                    style: { maxWidth: '150px' }
+                <ListItemButton
+                  onClick={() => {
+                    if (editingConversationId !== conversation.id) {
+                      selectConversation(conversation.id);
+                    }
                   }}
-                />
+                  selected={currentConversation?.id === conversation.id}
+                  sx={{ 
+                    borderRadius: 1,
+                    mb: 1,
+                    bgcolor: currentConversation?.id === conversation.id ? '#333' : 'transparent',
+                    '&:hover': { bgcolor: '#333' },
+                    pr: 7 // Add padding to prevent text overlap with buttons
+                  }}
+                >
+                  {editingConversationId === conversation.id ? (
+                    <TextField
+                      value={editConversationName}
+                      onChange={(e) => setEditConversationName(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                      size="small"
+                      fullWidth
+                      sx={{ 
+                        input: { color: 'white' },
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': { borderColor: 'gray' },
+                        }
+                      }}
+                    />
+                  ) : (
+                    <ListItemText 
+                      primary={conversation.title} 
+                      primaryTypographyProps={{ 
+                        noWrap: true,
+                        style: { maxWidth: '150px' }
+                      }}
+                    />
+                  )}
+                </ListItemButton>
               </ListItem>
             ))}
             {conversations.length === 0 && (
@@ -658,31 +795,96 @@ const Chat = () => {
             Your Conversations
           </Typography>
           
-          <List>
+          <List sx={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
             {conversations.map(conversation => (
               <ListItem 
                 key={conversation.id}
-                button 
-                selected={currentConversation?.id === conversation.id}
-                onClick={() => selectConversation(conversation.id)}
-                sx={{ 
-                  borderRadius: 1,
-                  mb: 1,
-                  bgcolor: currentConversation?.id === conversation.id ? '#333' : 'transparent',
-                  '&:hover': { bgcolor: '#333' },
-                }}
+                disablePadding
                 secondaryAction={
-                  <IconButton edge="end" onClick={() => deleteConversation(conversation.id)} sx={{ color: 'white' }}>
-                    <DeleteIcon />
-                  </IconButton>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {editingConversationId === conversation.id ? (
+                      <IconButton 
+                        edge="end" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateConversationName(conversation.id, editConversationName);
+                          setEditingConversationId(null);
+                        }} 
+                        sx={{ color: 'white', p: 0.5 }}
+                        size="small"
+                      >
+                        <SendIcon fontSize="small" />
+                      </IconButton>
+                    ) : (
+                      <>
+                        <IconButton 
+                          edge="end" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingConversationId(conversation.id);
+                            setEditConversationName(conversation.title);
+                          }} 
+                          sx={{ color: 'white', p: 0.5, mr: 0.5 }}
+                          size="small"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton 
+                          edge="end" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConversation(conversation.id);
+                          }} 
+                          sx={{ color: 'white', p: 0.5 }}
+                          size="small"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
                 }
               >
-                <ListItemText primary={conversation.title} 
-                  primaryTypographyProps={{
-                    noWrap: true,
-                    style: { maxWidth: '150px' }
+                <ListItemButton
+                  onClick={() => {
+                    if (editingConversationId !== conversation.id) {
+                      selectConversation(conversation.id);
+                    }
                   }}
-                />
+                  selected={currentConversation?.id === conversation.id}
+                  sx={{ 
+                    borderRadius: 1,
+                    mb: 1,
+                    bgcolor: currentConversation?.id === conversation.id ? '#333' : 'transparent',
+                    '&:hover': { bgcolor: '#333' },
+                    pr: 7 // Add padding to prevent text overlap with buttons
+                  }}
+                >
+                  {editingConversationId === conversation.id ? (
+                    <TextField
+                      value={editConversationName}
+                      onChange={(e) => setEditConversationName(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                      size="small"
+                      fullWidth
+                      sx={{ 
+                        input: { color: 'white' },
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': { borderColor: 'gray' },
+                        }
+                      }}
+                    />
+                  ) : (
+                    <ListItemText 
+                      primary={conversation.title} 
+                      primaryTypographyProps={{
+                        noWrap: true,
+                        style: { maxWidth: '150px' }
+                      }}
+                    />
+                  )}
+                </ListItemButton>
               </ListItem>
             ))}
           </List>
@@ -709,7 +911,7 @@ const Chat = () => {
           borderBottom: '1px solid #333'
         }}>
           <Typography variant="h6">
-            {currentConversation?.name || "New Chat"}
+            {currentConversation?.title || "New Chat"}
           </Typography>
           <Box>
             <IconButton onClick={() => setSettingsOpen(true)} sx={{ color: 'white' }}>
