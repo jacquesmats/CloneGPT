@@ -31,15 +31,19 @@ class ConversationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_message(self, request, pk=None):
         conversation = self.get_object()
-
+        
+        # Extract model and temperature parameters
+        model = request.data.get('model', 'gpt-4o-mini')
+        temperature = request.data.get('temperature', 0.7)
+        
         serializer = MessageSerializer(data=request.data)
         if serializer.is_valid():
-            # Save the user message
-            user_message = serializer.save(conversation=conversation)
-
-            if conversation.title is None or conversation.title == "":
-                conversation.title = conversation.generate_title(user_message.content)
-                conversation.save()
+            # Save the user message with model and temperature
+            user_message = serializer.save(
+                conversation=conversation,
+                model=model,
+                temperature=temperature
+            )
             
             # Get conversation history for context
             conversation_history = Message.objects.filter(
@@ -53,22 +57,23 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     "content": msg.content
                 } for msg in conversation_history
             ]
-
-            deployment = request.data.get('deployment', 'gpt-35-turbo')
-
             
-            assistant_response = self.llm_service.generate_response(formatted_history, deployment)
+            # Generate AI response using the LLM service
+            llm_service = LLMService()
+            assistant_response = llm_service.generate_response(formatted_history, model, temperature)
             
-            # Create the assistant message
+            # Create the assistant message with the same model and temperature values
             assistant_message = Message.objects.create(
                 conversation=conversation,
                 role='assistant',
-                content=assistant_response
+                content=assistant_response,
+                model=model,
+                temperature=temperature
             )
             
             # Return both messages
             return Response({
-                'user_message': serializer.data,
+                'user_message': MessageSerializer(user_message).data,
                 'assistant_message': MessageSerializer(assistant_message).data
             }, status=status.HTTP_201_CREATED)
             

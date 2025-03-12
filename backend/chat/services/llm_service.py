@@ -10,12 +10,14 @@ class LLMService:
         self.base_url = os.environ.get('AZURE_OPENAI_ENDPOINT')
         self.api_version = os.environ.get('AZURE_OPENAI_API_VERSION', '2024-10-21')
         
-    def generate_response(self, conversation_history, deployment):
+    def generate_response(self, conversation_history, deployment, temperature=0.7):
         """
         Generate a response based on the conversation history using Azure OpenAI
         
         Args:
             conversation_history: List of message dicts with 'role' and 'content' keys
+            deployment: The deployment name from the frontend
+            temperature: Controls randomness (0.0 to 1.0)
             
         Returns:
             str: The generated response text
@@ -23,17 +25,17 @@ class LLMService:
         try:
             # Construct the full API URL using the provided deployment
             api_url = f"{self.base_url}openai/deployments/{deployment}/chat/completions?api-version={self.api_version}"
-
+            
             # Format the conversation history for the API
             messages = [
                 {"role": msg["role"], "content": msg["content"]} 
                 for msg in conversation_history
             ]
             
-            # Azure OpenAI payload
+            # Azure OpenAI payload with temperature
             payload = {
                 "messages": messages,
-                "temperature": 0.7,
+                "temperature": temperature,
                 "max_tokens": 500
             }
             

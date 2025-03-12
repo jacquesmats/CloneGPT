@@ -7,9 +7,9 @@ class MessageInline(admin.TabularInline):
     extra = 1
 
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'conversation', 'role', 'content_preview', 'created_at')
-    list_filter = ('role', 'created_at', 'conversation')
-    search_fields = ('content',)
+    list_display = ('id', 'conversation', 'role', 'content_preview', 'model', 'temperature', 'created_at')
+    list_filter = ('role', 'model', 'created_at', 'conversation')
+    search_fields = ('content', 'model')
     
     def content_preview(self, obj):
         return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
