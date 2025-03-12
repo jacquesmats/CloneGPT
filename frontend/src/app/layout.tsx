@@ -1,37 +1,12 @@
-"use client"
 import { Inter } from 'next/font/google';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import Providers from '@/app/providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
-// Create a dark theme
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#536DFE',
-    },
-    secondary: {
-      main: '#90CAF9',
-    },
-    background: {
-      default: '#121212',
-      paper: '#1E1E1E',
-    },
-  },
-  typography: {
-    fontFamily: inter.style.fontFamily,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
-    },
-  },
-});
+export const metadata = {
+  title: 'ChatGPT Clone',
+  description: 'A ChatGPT-like interface built with Next.js and MUI',
+};
 
 export default function RootLayout({
   children,
@@ -41,10 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className} style={{ margin: 0 }}>
-        <ThemeProvider theme={darkTheme}>
-          <CssBaseline />
-          {children}
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
