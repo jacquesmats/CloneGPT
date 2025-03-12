@@ -1,11 +1,11 @@
 "use client"
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Box, 
   Typography, 
   TextField, 
   Button, 
-  CircularProgress, 
   IconButton,
   List,
   ListItem,
@@ -15,8 +15,6 @@ import {
   AppBar,
   Toolbar,
   Divider,
-  Menu,
-  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -25,7 +23,8 @@ import {
   Select,
   FormControl,
   InputLabel,
-  SelectChangeEvent
+  SelectChangeEvent,
+  MenuItem
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import AddIcon from "@mui/icons-material/Add";
@@ -34,12 +33,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import StopIcon from "@mui/icons-material/Stop";
-import axios from "axios";
-
-// API configuration
-const API_BASE_URL = "http://localhost:8000/api";
-const API_CONVERSATIONS_URL = `${API_BASE_URL}/conversations/`;
-const API_AUTH_URL = `${API_BASE_URL}/auth/`;
+import apiService from "@/services/apiService";
 
 // Types
 interface Message {
@@ -66,71 +60,10 @@ interface ChatSettings {
   contextLength: number;
 }
 
-// API Service
-const apiService = {
-  // Set token for all requests
-  setAuthToken: (token: string) => {
-    axios.defaults.headers.common['Authorization'] = `Token ${token}`;
-  },
-
-  // Auth
-  login: async (username: string, password: string) => {
-    const response = await axios.post(`${API_AUTH_URL}login/`, { username, password });
-    return response.data;
-  },
-
-  register: async (username: string, password: string, email: string) => {
-    const response = await axios.post(`${API_AUTH_URL}register/`, { username, password, email });
-    return response.data;
-  },
-
-  logout: async () => {
-    return await axios.post(`${API_AUTH_URL}logout/`);
-  },
-
-  // Conversations
-  getConversations: async () => {
-    const response = await axios.get(API_CONVERSATIONS_URL);
-    return response.data;
-  },
-
-  getConversation: async (id: string) => {
-    const response = await axios.get(`${API_CONVERSATIONS_URL}${id}/`);
-    return response.data;
-  },
-
-  createConversation: async (settings: ChatSettings) => {
-    const response = await axios.post(API_CONVERSATIONS_URL, {
-      title: "New Conversation",
-      model: settings.model,
-      temperature: settings.temperature,
-      context_length: settings.contextLength
-    });
-    return response.data;
-  },
-
-  updateConversation: async (id: string, data: Partial<Conversation>) => {
-    const response = await axios.patch(`${API_CONVERSATIONS_URL}${id}/`, data);
-    return response.data;
-  },
-
-  deleteConversation: async (id: string) => {
-    return await axios.delete(`${API_CONVERSATIONS_URL}${id}/`);
-  },
-
-  // Messages
-  addMessage: async (conversationId: string, message: string, deployment: string) => {
-    const response = await axios.post(`${API_CONVERSATIONS_URL}${conversationId}/add_message/`, {
-      role: "user",
-      content: message,
-      deployment: deployment
-    });
-    return response.data;
-  }
-};
-
 // Main Chat Component
 const Chat = () => {
+  const router = useRouter();
+  
   // State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<{username: string} | null>(null);
@@ -141,10 +74,6 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
-  const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
-  const [registerForm, setRegisterForm] = useState({ username: '', password: '', email: '' });
   const [availableModels] = useState<string[]>([
     'gpt-4o',
     'gpt-4o-mini'
@@ -179,9 +108,10 @@ const Chat = () => {
       setUser({ username: localStorage.getItem('username') || 'User' });
       loadConversations();
     } else {
-      setLoginDialogOpen(true);
+      // Redirect to login page if not authenticated
+      router.push('/login');
     }
-  }, []);
+  }, [router]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -338,7 +268,7 @@ const Chat = () => {
         streamConversationRename(currentConversation.id, newTitle);
       }
     } catch (error) {
-      if (axios.isCancel(error)) {
+      if (error.name === 'AbortError') {
         console.log("Request cancelled");
       } else {
         console.error("Error:", error);
@@ -394,42 +324,6 @@ const Chat = () => {
     }
   };
 
-  // Handle login
-  const handleLogin = async () => {
-    try {
-      const { username, password } = loginForm;
-      const data = await apiService.login(username, password);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('username', username);
-      apiService.setAuthToken(data.token);
-      setIsAuthenticated(true);
-      setUser({ username });
-      setLoginDialogOpen(false);
-      loadConversations();
-    } catch (error) {
-      console.error("Login failed:", error);
-      alert("Login failed. Please check your credentials.");
-    }
-  };
-
-  // Handle register
-  const handleRegister = async () => {
-    try {
-      const { username, password, email } = registerForm;
-      const data = await apiService.register(username, password, email);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('username', username);
-      apiService.setAuthToken(data.token);
-      setIsAuthenticated(true);
-      setUser({ username });
-      setRegisterDialogOpen(false);
-      loadConversations();
-    } catch (error) {
-      console.error("Registration failed:", error);
-      alert("Registration failed. Please try a different username or check your information.");
-    }
-  };
-
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -443,102 +337,19 @@ const Chat = () => {
       setUser(null);
       setCurrentConversation(null);
       setMessages([]);
-      setLoginDialogOpen(true);
+      router.push('/login');
     }
   };
 
   if (!mounted) return null; // Prevents hydration errors
 
+  // If not authenticated, don't render the chat UI
+  if (!isAuthenticated) {
+    return null;
+  }
+  
   return (
     <Box sx={{ display: "flex", height: "100vh", bgcolor: "#121212" }}>
-      {/* Login Dialog */}
-      <Dialog open={loginDialogOpen} onClose={() => {}} sx={{ '& .MuiPaper-root': { bgcolor: '#1E1E1E', color: 'white' } }}>
-        <DialogTitle>Log In</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Username"
-            fullWidth
-            variant="outlined"
-            value={loginForm.username}
-            onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-            sx={{ mb: 2, input: { color: 'white' }, '& label': { color: 'gray' } }}
-          />
-          <TextField
-            margin="dense"
-            label="Password"
-            type="password"
-            fullWidth
-            variant="outlined"
-            value={loginForm.password}
-            onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-            sx={{ mb: 2, input: { color: 'white' }, '& label': { color: 'gray' } }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setLoginDialogOpen(false);
-              setRegisterDialogOpen(true);
-            }} 
-            sx={{ color: 'white' }}
-          >
-            Register Instead
-          </Button>
-          <Button onClick={handleLogin} sx={{ color: 'white' }}>Log In</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Register Dialog */}
-      <Dialog open={registerDialogOpen} onClose={() => {}} sx={{ '& .MuiPaper-root': { bgcolor: '#1E1E1E', color: 'white' } }}>
-        <DialogTitle>Register</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Username"
-            fullWidth
-            variant="outlined"
-            value={registerForm.username}
-            onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
-            sx={{ mb: 2, input: { color: 'white' }, '& label': { color: 'gray' } }}
-          />
-          <TextField
-            margin="dense"
-            label="Email"
-            type="email"
-            fullWidth
-            variant="outlined"
-            value={registerForm.email}
-            onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-            sx={{ mb: 2, input: { color: 'white' }, '& label': { color: 'gray' } }}
-          />
-          <TextField
-            margin="dense"
-            label="Password"
-            type="password"
-            fullWidth
-            variant="outlined"
-            value={registerForm.password}
-            onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-            sx={{ mb: 2, input: { color: 'white' }, '& label': { color: 'gray' } }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setRegisterDialogOpen(false);
-              setLoginDialogOpen(true);
-            }} 
-            sx={{ color: 'white' }}
-          >
-            Log In Instead
-          </Button>
-          <Button onClick={handleRegister} sx={{ color: 'white' }}>Register</Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Settings Dialog */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} sx={{ '& .MuiPaper-root': { bgcolor: '#1E1E1E', color: 'white' } }}>
         <DialogTitle>Chat Settings</DialogTitle>
@@ -584,7 +395,7 @@ const Chat = () => {
           <Button onClick={updateSettings} sx={{ color: 'white' }}>Save</Button>
         </DialogActions>
       </Dialog>
-
+  
       {/* Mobile App Bar (only visible on small screens) */}
       <AppBar position="fixed" sx={{ 
         display: { xs: 'block', md: 'none' }, 
@@ -609,7 +420,7 @@ const Chat = () => {
           </IconButton>
         </Toolbar>
       </AppBar>
-
+  
       {/* Responsive Sidebar Drawer */}
       <Drawer
         variant="permanent"
@@ -753,7 +564,7 @@ const Chat = () => {
           </List>
         </Box>
       </Drawer>
-
+  
       {/* Mobile Drawer (temporary, only for small screens) */}
       <Drawer
         variant="temporary"
@@ -890,7 +701,7 @@ const Chat = () => {
           </List>
         </Box>
       </Drawer>
-
+  
       {/* Chat Section */}
       <Box 
         sx={{ 
@@ -934,13 +745,11 @@ const Chat = () => {
               ChatGPT Clone
             </Typography>
             <Typography variant="body1" sx={{ color: '#777', maxWidth: '500px', textAlign: 'center', mb: 4 }}>
-              {isAuthenticated ? 
-                currentConversation ? 
-                  "Ask me anything..." : 
-                  "Start a new conversation or select one from the sidebar" : 
-                "Please log in to start chatting"}
+              {currentConversation ? 
+                "Ask me anything..." : 
+                "Start a new conversation or select one from the sidebar"}
             </Typography>
-            {isAuthenticated && !currentConversation && (
+            {!currentConversation && (
               <Button 
                 variant="contained" 
                 startIcon={<AddIcon />} 
@@ -952,7 +761,7 @@ const Chat = () => {
             )}
           </Box>
         )}
-
+  
         {/* Messages Area */}
         {currentConversation && messages.length > 0 && (
           <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
@@ -981,7 +790,7 @@ const Chat = () => {
             <div ref={messagesEndRef} />
           </Box>
         )}
-
+  
         {/* Input Section */}
         <Box 
           sx={{ 
@@ -1017,7 +826,7 @@ const Chat = () => {
                   sendMessage();
                 }
               }}
-              disabled={!isAuthenticated || !currentConversation || loading}
+              disabled={!currentConversation || loading}
               sx={{
                 bgcolor: "transparent",
                 borderRadius: "24px",
@@ -1028,7 +837,7 @@ const Chat = () => {
             />
             <IconButton 
               onClick={loading ? stopGeneration : sendMessage} 
-              disabled={!isAuthenticated || !currentConversation || (!loading && !input.trim())}
+              disabled={!currentConversation || (!loading && !input.trim())}
               sx={{ 
                 ml: 1, 
                 mr: 1,
