@@ -1,13 +1,27 @@
 "use client"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import LoadingIndicator from "@/components/ui/LoadingIndicator";
+import Chat from "@/components/chat";
 
-import React from "react";
+export default function ChatPage() {
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-import Chat from "../../components/chat";
+  useEffect(() => {
+    setMounted(true);
+    
+    // Check if user is authenticated
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+    }
+  }, [router]);
 
-export default function Home() {
-  return (
-    <div>
-      <Chat />
-    </div>
-  );
+  // Return loading state until client-side code has executed
+  if (!mounted) {
+    return <LoadingIndicator fullScreen message="Loading chat..." />;
+  }
+
+  return <Chat />;
 }

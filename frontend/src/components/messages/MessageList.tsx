@@ -1,15 +1,25 @@
 "use client"
 import React, { useRef, useEffect } from 'react';
 import { Box, Typography, Divider } from '@mui/material';
-import MarkdownMessage from './MarkdownMessage';
+import MarkdownMessage from '@/components/messages/MarkdownMessage';
 
-const MessageList = ({ messages, loading }) => {
-  const messagesEndRef = useRef(null);
+// Add proper type definition for the props
+interface MessageListProps {
+  messages: any[];
+  loading: boolean;
+  messagesEndRef?: React.RefObject<HTMLDivElement>;
+}
+
+const MessageList = ({ messages, loading, messagesEndRef }: MessageListProps) => {
+  const localMessagesEndRef = useRef(null);
+  
+  // Use the passed ref if available, otherwise use the local one
+  const effectiveRef = messagesEndRef || localMessagesEndRef;
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    effectiveRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, effectiveRef]);
 
   // Group consecutive assistant messages
   const groupedMessages = messages.reduce((acc, message, index) => {
@@ -75,7 +85,7 @@ const MessageList = ({ messages, loading }) => {
         </Box>
       )}
       
-      <div ref={messagesEndRef} />
+      <div ref={effectiveRef} />
     </Box>
   );
 };

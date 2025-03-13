@@ -3,7 +3,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Box, Paper } from '@mui/material';
 import remarkGfm from 'remark-gfm';
-import CodeBlock from './CopyButton';
+import CodeBlock from '@/components/ui/CopyButton';
 
 // Custom components for rendering different parts of the markdown
 const components = {
