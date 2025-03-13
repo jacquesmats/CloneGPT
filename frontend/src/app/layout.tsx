@@ -1,11 +1,11 @@
-import { Inter } from 'next/font/google';
-import Providers from '@/app/providers';
+import { Inter } from "next/font/google";
+import Providers from "@/app/providers";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: 'ChatGPT Clone',
-  description: 'A ChatGPT-like interface built with Next.js and MUI',
+  title: "ChatGPT Clone",
+  description: "A ChatGPT-like interface built with Next.js and MUI",
 };
 
 export default function RootLayout({

@@ -13,23 +13,68 @@ from django.contrib.auth import authenticate
 
 
 class IsOwner(permissions.BasePermission):
-    """Custom permission to only allow owners of an object to access it."""
+    """
+    Custom permission to only allow owners of an object to access it.
+    
+    This permission is used to ensure that users can only access their own
+    conversations and messages.
+    """
     
     def has_object_permission(self, request, view, obj):
+        """
+        Check if the requesting user is the owner of the object.
+        
+        Args:
+            request: The HTTP request
+            view: The view that the permission is being checked against
+            obj: The object that the permission is being checked for
+            
+        Returns:
+            bool: True if the user is the owner, False otherwise
+        """
         return obj.user == request.user
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing conversations.
+    
+    This viewset provides CRUD operations for conversations and includes
+    a custom action for adding messages to a conversation.
+    
+    Permissions:
+        - User must be authenticated
+        - User must be the owner of the conversation
+    """
     serializer_class = ConversationSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
 
     llm_service = LLMService()
     
     def get_queryset(self):
+        """
+        Get the queryset of conversations for the current user.
+        
+        Returns:
+            QuerySet: Filtered queryset containing only the user's conversations
+        """
         return Conversation.objects.filter(user=self.request.user)
 
     @action(detail=True, methods=['post'])
     def add_message(self, request, pk=None):
+        """
+        Add a new message to a conversation and get an AI response.
+        
+        This action adds a user message to the conversation and then
+        generates an AI assistant response using the LLM service.
+        
+        Args:
+            request: The HTTP request containing the message data
+            pk: The primary key of the conversation
+            
+        Returns:
+            Response: The serialized message data or error response
+        """
         conversation = self.get_object()
         
         # Extract model and temperature parameters
@@ -81,20 +126,54 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing user information.
+    
+    This viewset provides read-only access to user data and includes
+    a custom action for retrieving the current user's information.
+    
+    Permissions:
+        - User must be authenticated
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     @action(detail=False, methods=['get'])
     def me(self, request):
+        """
+        Retrieve the current user's information.
+        
+        Returns:
+            Response: The serialized data for the current user
+        """
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
 
 class RegisterView(APIView):
+    """
+    API view for user registration.
+    
+    This view handles the creation of new user accounts and
+    returns a token for authentication.
+    
+    Permissions:
+        - No authentication required
+    """
     permission_classes = []
     
     def post(self, request):
+        """
+        Register a new user.
+        
+        Args:
+            request: The HTTP request containing the user data
+            
+        Returns:
+            Response: The created user data and authentication token,
+                     or error response
+        """
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             username = serializer.validated_data.get('username')
@@ -126,9 +205,28 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
+    """
+    API view for user login.
+    
+    This view handles user authentication and returns a token
+    for subsequent API requests.
+    
+    Permissions:
+        - No authentication required
+    """
     permission_classes = []
     
     def post(self, request):
+        """
+        Authenticate a user and return a token.
+        
+        Args:
+            request: The HTTP request containing the login credentials
+            
+        Returns:
+            Response: The user data and authentication token,
+                     or error response
+        """
         username = request.data.get('username')
         password = request.data.get('password')
         
@@ -155,7 +253,24 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    """
+    API view for user logout.
+    
+    This view handles the deletion of the user's authentication token.
+    
+    Permissions:
+        - User must be authenticated
+    """
     def post(self, request):
+        """
+        Log out a user by deleting their authentication token.
+        
+        Args:
+            request: The HTTP request
+            
+        Returns:
+            Response: Empty response with 204 No Content status
+        """
         # Delete the token to logout
         request.auth.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

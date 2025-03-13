@@ -1,19 +1,19 @@
-"use client"
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+"use client";
+import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 
 // Create a dark theme
 const darkTheme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: "dark",
     primary: {
-      main: '#536DFE',
+      main: "#536DFE",
     },
     secondary: {
-      main: '#90CAF9',
+      main: "#90CAF9",
     },
     background: {
-      default: '#121212',
-      paper: '#1E1E1E',
+      default: "#121212",
+      paper: "#1E1E1E",
     },
   },
   components: {
@@ -27,11 +27,7 @@ const darkTheme = createTheme({
   },
 });
 
-export default function Providers({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
