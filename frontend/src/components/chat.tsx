@@ -34,6 +34,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import StopIcon from "@mui/icons-material/Stop";
 import apiService from "@/services/apiService";
+import MarkdownMessage from "./MarkdownMessage";
+import MessageList from "@/components/MessageList";
 
 // Types
 interface Message {
@@ -702,20 +704,20 @@ const Chat = () => {
         </Box>
       </Drawer>
   
-      {/* Chat Section */}
-      <Box 
-        sx={{ 
-          flexGrow: 1, 
-          display: "flex", 
-          flexDirection: "column", 
-          bgcolor: "#121212", 
+      {/* Chat Content Area */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          bgcolor: "#121212",
           color: "white",
           mt: { xs: 8, md: 0 } // Add margin top on mobile to account for AppBar
         }}
       >
         {/* Chat Header (only visible on larger screens) */}
-        <Box sx={{ 
-          display: { xs: 'none', md: 'flex' }, 
+        <Box sx={{
+          display: { xs: 'none', md: 'flex' },
           justifyContent: 'space-between',
           alignItems: 'center',
           p: 2,
@@ -730,14 +732,19 @@ const Chat = () => {
             </IconButton>
           </Box>
         </Box>
-        
-        {/* Empty State */}
-        {(!currentConversation || messages.length === 0) && (
-          <Box sx={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'center', 
+
+        {/* Message List Component - replaces the original Messages Area */}
+        {currentConversation ? (
+          <MessageList 
+            messages={messages} 
+            loading={loading || isStreaming}
+          />
+        ) : (
+          <Box sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
             alignItems: 'center',
             p: 3
           }}>
@@ -745,69 +752,34 @@ const Chat = () => {
               ChatGPT Clone
             </Typography>
             <Typography variant="body1" sx={{ color: '#777', maxWidth: '500px', textAlign: 'center', mb: 4 }}>
-              {currentConversation ? 
-                "Ask me anything..." : 
-                "Start a new conversation or select one from the sidebar"}
+              Start a new conversation or select one from the sidebar
             </Typography>
-            {!currentConversation && (
-              <Button 
-                variant="contained" 
-                startIcon={<AddIcon />} 
-                onClick={createNewConversation}
-                sx={{ bgcolor: '#333', '&:hover': { bgcolor: '#444' } }}
-              >
-                New Chat
-              </Button>
-            )}
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={createNewConversation}
+              sx={{ bgcolor: '#333', '&:hover': { bgcolor: '#444' } }}
+            >
+              New Chat
+            </Button>
           </Box>
         )}
-  
-        {/* Messages Area */}
-        {currentConversation && messages.length > 0 && (
-          <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
-            {messages.map((msg, index) => (
-              <Box
-                key={index}
-                sx={{
-                  display: "flex",
-                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                  mb: 2,
-                }}
-              >
-                <Box
-                  sx={{
-                    maxWidth: "70%",
-                    p: 2,
-                    borderRadius: "12px",
-                    bgcolor: msg.role === "user" ? "#007AFF" : "#333",
-                    color: msg.role === "user" ? "white" : "#ddd",
-                  }}
-                >
-                  {msg.content}
-                </Box>
-              </Box>
-            ))}
-            <div ref={messagesEndRef} />
-          </Box>
-        )}
-  
+
         {/* Input Section */}
-        <Box 
-          sx={{ 
-            display: "flex", 
-            justifyContent: "center", 
-            alignItems: "center", 
-            p: 1, 
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            p: 1,
             pb: 2,
-            borderTop: "1px solid #333",
-            marginTop: "auto", // Push to bottom
           }}
         >
-          <Box 
-            sx={{ 
-              display: "flex", 
-              bgcolor: "#1E1E1E", 
-              borderRadius: "24px", 
+          <Box
+            sx={{
+              display: "flex",
+              bgcolor: "#1E1E1E",
+              borderRadius: "24px",
               width: { xs: '95%', sm: '85%', md: '70%' },
               position: 'relative'
             }}
@@ -835,19 +807,19 @@ const Chat = () => {
                 fieldset: { borderColor: "transparent" },
               }}
             />
-            <IconButton 
-              onClick={loading ? stopGeneration : sendMessage} 
+            <IconButton
+              onClick={loading ? stopGeneration : sendMessage}
               disabled={!currentConversation || (!loading && !input.trim())}
-              sx={{ 
-                ml: 1, 
+              sx={{
+                ml: 1,
                 mr: 1,
-                bgcolor: "transparent", 
+                bgcolor: "transparent",
                 color: "white",
                 alignSelf: 'center'
               }}
             >
-              {loading ? 
-                <StopIcon /> : 
+              {loading ?
+                <StopIcon /> :
                 <SendIcon />
               }
             </IconButton>

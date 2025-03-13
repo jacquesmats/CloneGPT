@@ -28,9 +28,14 @@ class LLMService:
             
             # Format the conversation history for the API
             messages = [
+                {"role": "system", "content": "Always format your responses using Markdown syntax. Use code blocks with language specification for code, use headings, lists, bold, and other formatting where appropriate."}
+            ]
+            
+            # Add the rest of conversation history
+            messages.extend([
                 {"role": msg["role"], "content": msg["content"]} 
                 for msg in conversation_history
-            ]
+            ])
             
             # Azure OpenAI payload with temperature
             payload = {
