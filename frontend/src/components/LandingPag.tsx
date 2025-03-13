@@ -66,7 +66,7 @@ const LandingPage = () => {
               }
             }}
           >
-            Start Chatting Now
+            Get Started
           </Button>
         </Box>
       </Container>

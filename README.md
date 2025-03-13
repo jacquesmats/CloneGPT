@@ -50,7 +50,7 @@ This project uses VS Code DevContainers for a consistent development environment
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/GPTClone.git
+   git clone https://github.com/jacquesmats/CloneGPT.git
    cd GPTClone
    ```
 

@@ -89,36 +89,22 @@ export const useConversations = () => {
 
   // Stream conversation rename with typing effect
   const streamConversationRename = useCallback(async (id: string, newName: string) => {
-    setIsTitleStreaming(true);
-    
-    // Simulate streaming for the title
-    let displayedTitle = "";
-    const titleUpdateInterval = 50; // ms between character additions
-    
-    for (let i = 0; i < newName.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, titleUpdateInterval));
-      displayedTitle += newName[i];
+    // Temporarily disabled streaming effect
+    try {
+      // Just update the name directly without streaming
+      const updatedConversation = await apiService.updateConversation(id, { title: newName });
       
-      // Update the conversation title in real-time
+      // Update the conversations list
       setConversations(
-        prev => prev.map(c => c.id === id ? { ...c, title: displayedTitle } : c)
+        prev => prev.map(c => c.id === id ? updatedConversation : c)
       );
       
-      if (currentConversation?.id === id) {
-        setCurrentConversation(prev => prev ? { ...prev, title: displayedTitle } : null);
-      }
-    }
-    
-    // After streaming is complete, update the actual title in the backend
-    try {
-      const updatedConversation = await apiService.updateConversation(id, { title: newName });
+      // Update current conversation if it's the one being renamed
       if (currentConversation?.id === id) {
         setCurrentConversation(updatedConversation);
       }
     } catch (error) {
       console.error("Error updating conversation name:", error);
-    } finally {
-      setIsTitleStreaming(false);
     }
   }, [currentConversation]);
 
