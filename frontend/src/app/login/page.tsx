@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Box, 
@@ -9,7 +9,8 @@ import {
   Paper,
   Link,
   Container,
-  Alert
+  Alert,
+  CircularProgress
 } from "@mui/material";
 import apiService from "@/services/apiService";
 
@@ -18,6 +19,11 @@ const Login = () => {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false); // Add this line
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -40,6 +46,21 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  // Return loading state until client-side code has executed
+  if (!mounted) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        bgcolor: '#121212'
+      }}>
+        <CircularProgress sx={{ color: '#536DFE' }} />
+      </Box>
+    );
+  }
 
   return (
     <Container component="main" maxWidth="xs">
